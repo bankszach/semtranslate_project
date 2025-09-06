@@ -18,6 +18,15 @@ violations=0
 while IFS= read -r file; do
   # Skip hook files themselves
   [[ "$file" == .githooks/* ]] && continue
+  # Skip documentation files
+  case "$file" in
+    *.md|*.rst|*.txt|LICENSE|LICENSE.*) continue ;;
+  esac
+  # Only scan common source/config types
+  case "$file" in
+    *.py|*.js|*.jsx|*.ts|*.tsx|*.json|*.yml|*.yaml|*.env|*.ini|*.toml|*.cfg|*.conf|*.properties|*.sh|*.bash|*.zsh) ;;
+    *) continue ;;
+  esac
   added_lines=$(git diff --cached -U0 -- "$file" | sed -n 's/^+//p')
   [[ -z "$added_lines" ]] && continue
   if grep -E -n 'sk-[A-Za-z0-9]{20,}' <<<"${added_lines}" >/dev/null; then

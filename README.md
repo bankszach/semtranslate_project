@@ -77,3 +77,10 @@ python -m semtranslate.cli translate-folder \
 ## Notes
 - Secrets safety: `.env`, `.venv/` and other local files are ignored by Git via `.gitignore`.
 - If you ever accidentally commit secrets, rotate them and force-push after purging history.
+- Local safety net: a pre-commit hook blocks committing `.env` and obvious secrets. If you cloned fresh, enable hooks with:
+
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+
+  Bypass (not recommended): `ALLOW_SECRET_COMMIT=1 git commit -m "..."`
