@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Allow bypass with: ALLOW_SECRET_COMMIT=1 git commit -m "..."
+if [[ "${ALLOW_SECRET_COMMIT:-}" == "1" ]]; then
+  exit 0
+fi
+
+# Block committing .env files or virtualenvs
+if git diff --cached --name-only | grep -E '(^|/)\.env($|\.|/)|(^|/)\.venv(/|$)' >/dev/null; then
+  echo "pre-commit: blocking commit: .env/.venv files must not be committed." >&2
+  echo "Use ALLOW_SECRET_COMMIT=1 to bypass (not recommended)." >&2
+  exit 1
+fi
+
+# Scan added lines per staged file (excluding hooks directory)
+violations=0
+while IFS= read -r file; do
+  # Skip hook files themselves
+  [[ "$file" == .githooks/* ]] && continue
+  added_lines=$(git diff --cached -U0 -- "$file" | sed -n 's/^+//p')
+  [[ -z "$added_lines" ]] && continue
+  if grep -E -n 'sk-[A-Za-z0-9]{20,}' <<<"${added_lines}" >/dev/null; then
+    echo "pre-commit: $file: possible OpenAI secret detected (sk-...)." >&2
+    violations=1
+  fi
+  if grep -E -n 'AIza[0-9A-Za-z\-_]{35}' <<<"${added_lines}" >/dev/null; then
+    echo "pre-commit: $file: possible Google API key detected." >&2
+    violations=1
+  fi
+  if grep -E -n 'xox[baprs]-[A-Za-z0-9-]{10,}' <<<"${added_lines}" >/dev/null; then
+    echo "pre-commit: $file: possible Slack token detected." >&2
+    violations=1
+  fi
+  if grep -E -in '(^|[^A-Za-z])(api[_-]?key|secret|token)[^\n]{0,40}[:=][^\n]{0,128}' <<<"${added_lines}" >/dev/null; then
+    echo "pre-commit: $file: possible credential assignment detected (api key/secret/token)." >&2
+    violations=1
+  fi
+  if grep -E -n 'OPENAI_API_KEY\s*[:=]' <<<"${added_lines}" >/dev/null; then
+    echo "pre-commit: $file: OPENAI_API_KEY appears in added lines; do not commit secrets." >&2
+    violations=1
+  fi
+done < <(git diff --cached --diff-filter=ACMR --name-only)
+
+if [[ "$violations" -ne 0 ]]; then
+  exit 1
+fi
+
+exit 0
