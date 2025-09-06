@@ -18,6 +18,8 @@ violations=0
 while IFS= read -r file; do
   # Skip hook files themselves
   [[ "$file" == .githooks/* ]] && continue
+  # Skip CI files
+  [[ "$file" == .github/* ]] && continue
   # Skip documentation files
   case "$file" in
     *.md|*.rst|*.txt|LICENSE|LICENSE.*) continue ;;
