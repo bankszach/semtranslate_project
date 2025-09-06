@@ -38,9 +38,10 @@ dist/
 .envrc
 .envrc.local
 .python-version
+# Allow checked-in examples
+!/.env.example
 
 # Node (if present)
 node_modules/
 pnpm-lock.yaml
 package-lock.json
-
